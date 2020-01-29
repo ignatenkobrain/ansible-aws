@@ -1,0 +1,94 @@
+---
+- hosts: all
+  gather_facts: no
+  run_once: true
+  vars:
+    ansible_connection: local
+  tasks:
+    - block:
+      - name: Create VPC
+        ec2_vpc_net:
+          region: "{{ aws_region }}"
+          name: "{{ vpc_name }}-vpc"
+          cidr_block: "{{ vpc_cidr }}"
+        register: vpc_info
+      - name: Cache vpc_id
+        set_fact: vpc_id={{ vpc_info['vpc']['id'] }} cacheable=yes
+      when: vpc_id is not defined
+
+    - name: Create an internet gateway
+      ec2_vpc_igw:
+        region: "{{ aws_region }}"
+        vpc_id: "{{ vpc_id }}"
+        tags:
+          Name: "{{ vpc_name }}-gw"
+      async: 60
+      poll: 0
+      register: igw_task
+      when: gateway_id is not defined
+
+    - name: Create subnet {{ item.key }}
+      ec2_vpc_subnet:
+        region: "{{ aws_region }}"
+        az: "{{ item.value['az'] }}"
+        cidr: "{{ item.value['cidr'] }}"
+        vpc_id: "{{ vpc_id }}"
+        tags:
+          Name: "{{ vpc_name }}-{{ item.key }}-subnet"
+      with_dict: "{{ subnets }}"
+      when: "'%s-%s-subnet' | format(vpc_name, item.key) not in subnet_ids | default({})"
+      async: 90
+      poll: 0
+      register: subnets_task
+
+    - block:
+      - name: Lookup the main VPC route table (created automatically)
+        ec2_vpc_route_table_info:
+          region: "{{ aws_region }}"
+          filters:
+            vpc-id: "{{ vpc_id }}"
+            association.main: "true"
+        register: vpc_route_tables
+      - name: Cache vpc_rt_id
+        set_fact: vpc_rt_id={{ vpc_route_tables['route_tables'][0]['id'] }} cacheable=yes
+      when: vpc_rt_id is not defined
+
+    - name: Wait until internet gateway is created
+      async_status:
+        jid: "{{ igw_task.ansible_job_id }}"
+      register: igw_info
+      until: igw_info.finished
+      when: not igw_task.skipped | default(false)
+    - name: Cache gateway_id
+      set_fact: gateway_id={{ igw_info['gateway_id'] }} cacheable=yes
+      when: not igw_info.skipped | default(false)
+
+    - name: Wait until subnets are created
+      async_status:
+        jid: "{{ item.ansible_job_id }}"
+      loop: "{{ subnets_task.results }}"
+      retries: 10
+      when: not item.skipped | default(false)
+      register: subnets_info
+      until: subnets_info.finished
+    - name: Cache subnet_id’s
+      set_fact:
+        subnet_ids: "{{ subnet_ids | default({}) | combine({ item['subnet']['tags']['Name']: item['subnet']['id'] }) }}"
+        cacheable: true
+      loop: "{{ subnets_info.results }}"
+      when: not item.skipped | default(false)
+
+    - name: Add subnets to the routing table
+      ec2_vpc_route_table:
+        region: "{{ aws_region }}"
+        lookup: id
+        route_table_id: "{{ vpc_rt_id }}"
+        routes:
+          - dest: "{{ vpc_cidr }}"
+            gateway_id: local
+          - dest: 0.0.0.0/0
+            gateway_id: "{{ gateway_id }}"
+        subnets: "{{ subnet_ids.keys() | list }}"
+        vpc_id: "{{ vpc_id }}"
+        tags:
+          Name: "{{ vpc_name }}-rt"
