@@ -74,17 +74,17 @@
         jid: "{{ igw_task.ansible_job_id }}"
       register: igw_info
       until: igw_info.finished
-      when: not igw_task.skipped | default(false)
+      when: igw_task is not skipped
     - name: Cache Internet Gateway ID
       set_fact: igw_id={{ igw_info['gateway_id'] }} cacheable=yes
-      when: not igw_info.skipped | default(false)
+      when: igw_info is not skipped
 
     - name: Wait until subnets are created
       async_status:
         jid: "{{ item.ansible_job_id }}"
       loop: "{{ subnets_task.results }}"
       retries: 10
-      when: not item.skipped | default(false)
+      when: item is not skipped
       register: subnets_info
       until: subnets_info.finished
     - name: Cache Subnet ID’s
@@ -92,7 +92,7 @@
         subnet_ids: "{{ subnet_ids | default({}) | combine({ item['subnet']['tags']['Name']: item['subnet']['id'] }) }}"
         cacheable: true
       loop: "{{ subnets_info.results }}"
-      when: not item.skipped | default(false)
+      when: item is not skipped
 
     - name: Add subnets to the routing table
       ec2_vpc_route_table:
