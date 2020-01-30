@@ -1,0 +1,21 @@
+---
+all:
+  children:
+    cax:
+      children:
+        servers:
+          hosts:
+            kkt[0:10].cax.pcigdc.com:
+      vars:
+        aws_region: ca-central-1
+        vpc_name: konsky
+        vpc_cidr: 10.123.0.0/22
+        subnets:
+          dev-a:
+            az: "{{ aws_region }}a"
+            cidr: 10.123.0.0/24
+          dev-b:
+            az: "{{ aws_region }}b"
+            cidr: 10.123.2.0/24
+  vars:
+    ansible_python_interpreter: auto
