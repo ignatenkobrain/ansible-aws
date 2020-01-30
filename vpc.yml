@@ -47,7 +47,7 @@
         region: "{{ aws_region }}"
         name: "{{ item.key }}"
         description: "{{ item.value['description'] | default('default VPC security group') }}"
-        rules: "{{ item.value['rules'] }}"
+        rules: "{{ item.value['rules'] | default(omit) }}"
         vpc_id: "{{ vpc_id }}"
         tags:
           Name: "{{ name }}-{{ item.key }}-group"
