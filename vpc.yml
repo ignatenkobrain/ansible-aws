@@ -130,5 +130,7 @@
         state: absent
       when: item.tags['Managed-By'] | default(none) == 'Ansible' and item.group_name not in security_groups
       loop: "{{ security_groups_output.security_groups }}"
+      async: 60
+      poll: 3
       tags:
         - cleanup
