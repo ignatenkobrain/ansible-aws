@@ -8,6 +8,8 @@
           region: "{{ aws_region }}"
           name: "{{ name }}-vpc"
           cidr_block: "{{ cidr }}"
+          tags:
+            Managed-By: Ansible
         register: vpc_info
       - name: Cache VPC ID
         set_fact: vpc_id={{ vpc_info['vpc']['id'] }} cacheable=yes
@@ -19,6 +21,7 @@
         vpc_id: "{{ vpc_id }}"
         tags:
           Name: "{{ name }}-igw"
+          Managed-By: Ansible
       async: 60
       poll: 0
       register: igw_task
@@ -32,6 +35,7 @@
         vpc_id: "{{ vpc_id }}"
         tags:
           Name: "{{ name }}-{{ item.key }}-subnet"
+          Managed-By: Ansible
       with_dict: "{{ subnets }}"
       when: "'%s-%s-subnet' | format(name, item.key) not in subnet_ids | default({})"
       async: 90
@@ -89,3 +93,4 @@
         vpc_id: "{{ vpc_id }}"
         tags:
           Name: "{{ name }}-rt"
+          Managed-By: Ansible
