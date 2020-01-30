@@ -42,6 +42,21 @@
       poll: 0
       register: subnets_task
 
+    - name: Create security groups
+      ec2_group:
+        region: "{{ aws_region }}"
+        name: "{{ item.key }}"
+        description: "{{ item.value['description'] | default('default VPC security group') }}"
+        rules: "{{ item.value['rules'] }}"
+        vpc_id: "{{ vpc_id }}"
+        tags:
+          Name: "{{ name }}-{{ item.key }}-group"
+          Managed-By: Ansible
+      with_dict: "{{ security_groups }}"
+      async: 60
+      poll: 0
+      register: security_groups_task
+
     - block:
       - name: Lookup the main VPC route table (created automatically)
         ec2_vpc_route_table_info:
@@ -94,3 +109,8 @@
         tags:
           Name: "{{ name }}-rt"
           Managed-By: Ansible
+
+    - name: Wait until security groups are created
+      async_status:
+        jid: "{{ item.ansible_job_id }}"
+      loop: "{{ security_groups_task.results }}"

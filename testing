@@ -15,6 +15,18 @@ all:
                 dev-b:
                   az: "{{ aws_region }}b"
                   cidr: 10.123.2.0/24
+              security_groups:
+                default:
+                  rules:
+                    - proto: tcp
+                      ports: 22
+                      cidr_ip: "{{ cidr }}"
+                bastion:
+                  description: Bastion (SSH from outside)
+                  rules:
+                    - proto: tcp
+                      ports: 22
+                      cidr_ip: 0.0.0.0/0
           vars:
             ansible_connection: local
         servers:
