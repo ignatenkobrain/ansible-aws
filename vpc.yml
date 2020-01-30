@@ -1,18 +1,15 @@
 ---
-- hosts: all
+- hosts: vpcs
   gather_facts: no
-  run_once: true
-  vars:
-    ansible_connection: local
   tasks:
     - block:
       - name: Create VPC
         ec2_vpc_net:
           region: "{{ aws_region }}"
-          name: "{{ vpc_name }}-vpc"
-          cidr_block: "{{ vpc_cidr }}"
+          name: "{{ name }}-vpc"
+          cidr_block: "{{ cidr }}"
         register: vpc_info
-      - name: Cache vpc_id
+      - name: Cache VPC ID
         set_fact: vpc_id={{ vpc_info['vpc']['id'] }} cacheable=yes
       when: vpc_id is not defined
 
@@ -21,22 +18,22 @@
         region: "{{ aws_region }}"
         vpc_id: "{{ vpc_id }}"
         tags:
-          Name: "{{ vpc_name }}-gw"
+          Name: "{{ name }}-igw"
       async: 60
       poll: 0
       register: igw_task
-      when: gateway_id is not defined
+      when: igw_id is not defined
 
-    - name: Create subnet {{ item.key }}
+    - name: Create subnets
       ec2_vpc_subnet:
         region: "{{ aws_region }}"
         az: "{{ item.value['az'] }}"
         cidr: "{{ item.value['cidr'] }}"
         vpc_id: "{{ vpc_id }}"
         tags:
-          Name: "{{ vpc_name }}-{{ item.key }}-subnet"
+          Name: "{{ name }}-{{ item.key }}-subnet"
       with_dict: "{{ subnets }}"
-      when: "'%s-%s-subnet' | format(vpc_name, item.key) not in subnet_ids | default({})"
+      when: "'%s-%s-subnet' | format(name, item.key) not in subnet_ids | default({})"
       async: 90
       poll: 0
       register: subnets_task
@@ -49,9 +46,9 @@
             vpc-id: "{{ vpc_id }}"
             association.main: "true"
         register: vpc_route_tables
-      - name: Cache vpc_rt_id
-        set_fact: vpc_rt_id={{ vpc_route_tables['route_tables'][0]['id'] }} cacheable=yes
-      when: vpc_rt_id is not defined
+      - name: Cache Route Table ID
+        set_fact: route_table_id={{ vpc_route_tables['route_tables'][0]['id'] }} cacheable=yes
+      when: route_table_id is not defined
 
     - name: Wait until internet gateway is created
       async_status:
@@ -59,8 +56,8 @@
       register: igw_info
       until: igw_info.finished
       when: not igw_task.skipped | default(false)
-    - name: Cache gateway_id
-      set_fact: gateway_id={{ igw_info['gateway_id'] }} cacheable=yes
+    - name: Cache Internet Gateway ID
+      set_fact: igw_id={{ igw_info['gateway_id'] }} cacheable=yes
       when: not igw_info.skipped | default(false)
 
     - name: Wait until subnets are created
@@ -71,7 +68,7 @@
       when: not item.skipped | default(false)
       register: subnets_info
       until: subnets_info.finished
-    - name: Cache subnet_id’s
+    - name: Cache Subnet ID’s
       set_fact:
         subnet_ids: "{{ subnet_ids | default({}) | combine({ item['subnet']['tags']['Name']: item['subnet']['id'] }) }}"
         cacheable: true
@@ -82,13 +79,13 @@
       ec2_vpc_route_table:
         region: "{{ aws_region }}"
         lookup: id
-        route_table_id: "{{ vpc_rt_id }}"
+        route_table_id: "{{ route_table_id }}"
         routes:
-          - dest: "{{ vpc_cidr }}"
+          - dest: "{{ cidr }}"
             gateway_id: local
           - dest: 0.0.0.0/0
-            gateway_id: "{{ gateway_id }}"
+            gateway_id: "{{ igw_id }}"
         subnets: "{{ subnet_ids.keys() | list }}"
         vpc_id: "{{ vpc_id }}"
         tags:
-          Name: "{{ vpc_name }}-rt"
+          Name: "{{ name }}-rt"
