@@ -21,3 +21,9 @@ Using configured AWS profile, set the environment variable and run playbook.
 ```sh
 env AWS_PROFILE=gdc-test ansible-playbook -i testing vpc.yml
 ```
+
+## Testing inventory’s sanity
+
+```sh
+ansible-playbook -i testing playbooks/check-inventory.yml
+```

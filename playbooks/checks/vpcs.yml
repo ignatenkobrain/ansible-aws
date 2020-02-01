@@ -1,0 +1,31 @@
+---
+- name: Check VPCs
+  hosts: vpcs
+  gather_facts: no
+  tasks:
+    - name: Check that security groups contain the default one
+      assert:
+        that: "'default' in security_groups"
+        quiet: yes
+
+    - name: Check that security groups have a description
+      assert:
+        that: "'description' in data"
+        quiet: yes
+      loop: >
+        {{
+            security_groups
+            | dict2items
+            | rejectattr('key', 'equalto', 'default')
+            | list
+        }}
+      loop_control:
+        label: "{{ item.key }}"
+      vars:
+        data: "{{ item.value | default({}) }}"
+
+    - name: Check security groups
+      include_tasks: include/check_security_group.yml
+      loop: "{{ security_groups | dict2items(key_name='name', value_name='data') }}"
+      loop_control:
+        loop_var: security_group

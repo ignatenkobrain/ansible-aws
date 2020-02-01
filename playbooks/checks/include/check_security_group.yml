@@ -1,0 +1,7 @@
+---
+- name: Check security group rules
+  include_tasks: check_security_group_rule.yml
+  loop: "{{ security_group.data['rules'] | default([]) }}"
+  loop_control:
+    loop_var: rule
+    index_var: rule_idx
