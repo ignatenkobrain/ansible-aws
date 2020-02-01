@@ -4,3 +4,17 @@
     that: rule['group_name'] in security_groups
     quiet: yes
   when: "'group_name' in rule"
+
+- name: Check that security group rule has valid IPv4 CIDR specified
+  assert:
+    that: item | ipsubnet | ipv4
+    quiet: yes
+  loop: "{{ [rule['cidr_ip']] | flatten }}"
+  when: "'cidr_ip' in rule"
+
+- name: Check that security group rule has valid IPv6 CIDR specified
+  assert:
+    that: item | ipsubnet | ipv6
+    quiet: yes
+  loop: "{{ [rule['cidr_ipv6']] | flatten }}"
+  when: "'cidr_ipv6' in rule"
