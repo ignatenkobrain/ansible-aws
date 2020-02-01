@@ -36,7 +36,7 @@
         tags:
           Name: "{{ name }}-{{ item.key }}-subnet"
           Managed-By: Ansible
-      with_dict: "{{ subnets }}"
+      loop: "{{ subnets | dict2items }}"
       when: "'%s-%s-subnet' | format(name, item.key) not in subnet_ids | default({})"
       async: 90
       poll: 0
@@ -52,7 +52,7 @@
         tags:
           Name: "{{ name }}-{{ item.key }}-group"
           Managed-By: Ansible
-      with_dict: "{{ security_groups }}"
+      loop: "{{ security_groups | dict2items }}"
       async: 60
       poll: 0
       register: security_groups_task
