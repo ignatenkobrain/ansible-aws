@@ -1,7 +1,5 @@
 ---
-- name: >
-    Check that security group rule {{ security_group.name }}@{{ rule_idx }}
-    does not reference unmanaged security groups
+- name: Check that security group rule does not reference unmanaged security groups
   assert:
     that: rule['group_name'] in security_groups
     quiet: yes

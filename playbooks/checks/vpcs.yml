@@ -29,3 +29,4 @@
       loop: "{{ security_groups | dict2items(key_name='name', value_name='data') }}"
       loop_control:
         loop_var: security_group
+        label: "{{ security_group.name }}"

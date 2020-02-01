@@ -5,3 +5,4 @@
   loop_control:
     loop_var: rule
     index_var: rule_idx
+    label: "{{ security_group.name }}:{{ rule_idx }}"
