@@ -33,6 +33,7 @@
         az: "{{ item.value['az'] }}"
         cidr: "{{ item.value['cidr'] }}"
         vpc_id: "{{ vpc_id }}"
+        wait: no
         tags:
           Name: "{{ name }}-{{ item.key }}-subnet"
           Managed-By: Ansible
