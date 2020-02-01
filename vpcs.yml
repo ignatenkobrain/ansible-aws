@@ -13,7 +13,7 @@
     - name: Cache VPC ID
       set_fact: vpc_id={{ vpc_info['vpc']['id'] }} cacheable=yes
 
-    - name: Create an internet gateway
+    - name: Spawn creation of an internet gateway
       ec2_vpc_igw:
         region: "{{ aws_region }}"
         vpc_id: "{{ vpc_id }}"
@@ -24,7 +24,7 @@
       poll: 0
       register: igw_task
 
-    - name: Create subnets
+    - name: Spawn creation of subnets
       ec2_vpc_subnet:
         region: "{{ aws_region }}"
         az: "{{ item.value['az'] }}"
@@ -39,7 +39,7 @@
       poll: 0
       register: subnets_task
 
-    - name: Create security groups
+    - name: Spawn creation of security groups
       ec2_group:
         region: "{{ aws_region }}"
         name: "{{ item.key }}"
