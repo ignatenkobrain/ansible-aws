@@ -105,23 +105,3 @@
       async_status:
         jid: "{{ item.ansible_job_id }}"
       loop: "{{ security_groups_task.results }}"
-
-    - name: Find all security groups in the VPC
-      ec2_group_info:
-        region: "{{ aws_region }}"
-        filters:
-          vpc-id: "{{ vpc_id }}"
-      register: security_groups_output
-      tags:
-        - cleanup
-    - name: Remove obsolete security groups (managed by Ansible)
-      ec2_group:
-        region: "{{ aws_region }}"
-        group_id: "{{ item.group_id }}"
-        state: absent
-      when: item.tags['Managed-By'] | default(none) == 'Ansible' and item.group_name not in security_groups
-      loop: "{{ security_groups_output.security_groups }}"
-      async: 60
-      poll: 3
-      tags:
-        - cleanup
