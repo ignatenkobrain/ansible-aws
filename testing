@@ -1,36 +1,32 @@
 ---
 all:
   children:
-    cax:
-      children:
-        vpcs:
-          hosts:
-            konsky-cloud.cax.pcigdc.com:
-              name: konsky
-              cidr: 10.123.0.0/22
-              subnets:
-                dev-a:
-                  az: "{{ aws_region }}a"
-                  cidr: 10.123.0.0/24
-                dev-b:
-                  az: "{{ aws_region }}b"
-                  cidr: 10.123.2.0/24
-              security_groups:
-                default:
-                  rules:
-                    - proto: tcp
-                      ports: 22
-                      cidr_ip: "{{ cidr }}"
-                bastion:
-                  description: Bastion (SSH from outside)
-                  rules:
-                    - proto: tcp
-                      ports: 22
-                      cidr_ip: 0.0.0.0/0
-          vars:
-            ansible_connection: local
-      vars:
-        vpc: konsky-cloud.cax.pcigdc.com
-        aws_region: ca-central-1
+    vpc:
+      hosts:
+        ca-central-1.konsky:
+          cidr: 10.123.0.0/22
+          subnets:
+            dev-a:
+              az: "{{ aws_region }}a"
+              cidr: 10.123.0.0/23
+            dev-b:
+              az: "{{ aws_region }}b"
+              cidr: 10.123.2.0/23
+          security_groups:
+            default:
+              description: default VPC security group
+              rules:
+                - proto: all
+                  cidr_ip: "{{ cidr }}"
+            bastion:
+              description: Bastion (access from outside)
+              rules:
+                - proto: tcp
+                  ports: 22
+                  cidr_ip: 0.0.0.0/0
   vars:
     ansible_python_interpreter: auto
+    ansible_connection: local
+    aws_region: "{{ inventory_hostname.split('.')[0] }}"
+    vpc_name: "{{ inventory_hostname.split('.')[1] }}"
+    vpc: "{{ aws_region }}.{{ vpc_name }}"

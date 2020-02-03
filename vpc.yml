@@ -1,16 +1,17 @@
 ---
-- hosts: vpcs
+- name: Set up VPCs
+  hosts: vpc
   gather_facts: no
   tasks:
     - name: Create VPC
       ec2_vpc_net:
         region: "{{ aws_region }}"
-        name: "{{ name }}-vpc"
+        name: "{{ vpc_name }}"
         cidr_block: "{{ cidr }}"
         tags:
           Managed-By: Ansible
       register: vpc_info
-    - name: Cache VPC ID
+    - name: Cache VPC id
       set_fact: vpc_id={{ vpc_info['vpc']['id'] }} cacheable=yes
 
     - name: Spawn creation of an internet gateway
@@ -18,7 +19,7 @@
         region: "{{ aws_region }}"
         vpc_id: "{{ vpc_id }}"
         tags:
-          Name: "{{ name }}-igw"
+          Name: "{{ vpc_name }}"
           Managed-By: Ansible
       async: 60
       poll: 0
@@ -32,7 +33,7 @@
         vpc_id: "{{ vpc_id }}"
         wait: no
         tags:
-          Name: "{{ name }}-{{ item.key }}-subnet"
+          Name: "{{ item.key }}"
           Managed-By: Ansible
       loop: "{{ subnets | dict2items }}"
       async: 90
@@ -43,11 +44,11 @@
       ec2_group:
         region: "{{ aws_region }}"
         name: "{{ item.key }}"
-        description: "{{ item.value['description'] | default('default VPC security group') }}"
+        description: "{{ item.value['description'] }}"
         rules: "{{ item.value['rules'] | default(omit) }}"
         vpc_id: "{{ vpc_id }}"
         tags:
-          Name: "{{ name }}-{{ item.key }}-group"
+          Name: "{{ item.key }}"
           Managed-By: Ansible
       loop: "{{ security_groups | dict2items }}"
       async: 60
@@ -61,7 +62,7 @@
           vpc-id: "{{ vpc_id }}"
           association.main: "true"
       register: vpc_route_tables
-    - name: Cache Route Table ID
+    - name: Cache Route Table id
       set_fact: route_table_id={{ vpc_route_tables['route_tables'][0]['id'] }} cacheable=yes
 
     - name: Wait until internet gateway is created
@@ -69,7 +70,7 @@
         jid: "{{ igw_task.ansible_job_id }}"
       register: igw_info
       until: igw_info.finished
-    - name: Cache Internet Gateway ID
+    - name: Cache Internet Gateway id
       set_fact: igw_id={{ igw_info['gateway_id'] }} cacheable=yes
 
     - name: Wait until subnets are created
@@ -79,10 +80,15 @@
       retries: 10
       register: subnets_info
       until: subnets_info.finished
-    - name: Cache Subnet ID’s
+    - name: Cache Subnet id’s
       set_fact:
-        subnet_ids: "{{ subnet_ids | default({}) | combine({ item['subnet']['tags']['Name']: item['subnet']['id'] }) }}"
-        cacheable: true
+        subnet_ids: >
+          {{
+              subnet_ids
+              | default({})
+              | combine({ item['subnet']['tags']['Name']: item['subnet']['id'] })
+          }}
+        cacheable: yes
       loop: "{{ subnets_info.results }}"
 
     - name: Add subnets to the routing table
@@ -98,7 +104,6 @@
         subnets: "{{ subnet_ids.keys() | list }}"
         vpc_id: "{{ vpc_id }}"
         tags:
-          Name: "{{ name }}-rt"
           Managed-By: Ansible
 
     - name: Wait until security groups are created

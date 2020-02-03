@@ -3,7 +3,6 @@
   assert:
     that: "'description' in security_group.data"
     quiet: yes
-  when: security_group.name != 'default'
 
 - name: Check security group rules
   include_tasks: check_security_group_rule.yml

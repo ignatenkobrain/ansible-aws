@@ -1,2 +1,2 @@
 ---
-- import_playbook: checks/vpcs.yml
+- import_playbook: checks/vpc.yml
