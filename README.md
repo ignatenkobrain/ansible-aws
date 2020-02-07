@@ -19,11 +19,11 @@ Manage AWS thingies with Ansible.
 Using configured AWS profile, set the environment variable and run playbook.
 
 ```sh
-env AWS_PROFILE=gdc-test ansible-playbook -i testing vpc.yml
+env AWS_PROFILE=gdc-test ansible-playbook -i inventories/testing site.yml
 ```
 
 ## Testing inventory’s sanity
 
 ```sh
-ansible-playbook -i testing playbooks/check-inventory.yml
+ansible-playbook -i inventories/testing/00-deployment.yml playbooks/check-inventory.yml
 ```

@@ -1,0 +1,14 @@
+---
+- name: Make the bastion real
+  hosts: bastion
+  gather_facts: no
+  tasks:
+    - name: Set up authorized keys
+      authorized_key:
+        user: "{{ ansible_user }}"
+        key: |-
+          {% set nl = joiner('\n') %}
+          {% for c, key in ssh_keys.items() -%}
+            {{ nl() }}{{ '%s %s' | format(key, c) }}
+          {%- endfor %}
+        exclusive: yes

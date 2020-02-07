@@ -1,0 +1,19 @@
+---
+security_groups:
+  default:
+    description: default VPC security group
+    rules:
+      - proto: all
+        cidr_ip: "{{ cidr }}"
+        rule_desc: Allow any-any communication
+  bastion:
+    description: Bastion (access from outside)
+    rules:
+      - proto: tcp
+        ports: 22
+        cidr_ip: 0.0.0.0/0
+        rule_desc: Allow access from anywhere to SSH
+      - proto: icmp
+        ports: -1
+        cidr_ip: 0.0.0.0/0
+        rule_desc: Allow ping from anywhere

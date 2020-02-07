@@ -1,0 +1,11 @@
+---
+ansible_user: ec2-user
+bastion: "{{ vpc }}.bastion"
+ansible_ssh_common_args: >-
+  {{
+      "-o ProxyJump='%s@%s'" | format(hostvars[bastion]['ansible_user'],
+                                      hostvars[bastion]['ansible_host'])
+      if bastion is defined and "bastion" not in group_names
+      else ""
+  }}
+  -o StrictHostKeyChecking=no

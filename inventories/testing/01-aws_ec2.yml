@@ -1,0 +1,13 @@
+---
+plugin: aws_ec2
+regions:
+  - ca-central-1
+keyed_groups:
+  - key: tags['Role']
+    separator: ""
+hostnames:
+  - tag:Ansible-Hostname
+  - dns-name
+  - private-dns-name
+compose:
+  ansible_host: public_dns_name or private_dns_name

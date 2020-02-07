@@ -1,0 +1,24 @@
+---
+all:
+  children:
+    vpc:
+      hosts:
+        ca-central-1.igors:
+          cidr: 10.123.0.0/22
+          subnets:
+            a:
+              az: "{{ aws_region }}a"
+              cidr: 10.123.0.0/23
+            b:
+              az: "{{ aws_region }}b"
+              cidr: 10.123.2.0/23
+    ec2:
+      children:
+        bastion:
+          hosts:
+            ca-central-1.igors.bastion:
+              subnet: a
+        app:
+          hosts:
+            ca-central-1.igors.private[01:02]:
+              subnet: b

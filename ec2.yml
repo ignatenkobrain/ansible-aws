@@ -1,0 +1,31 @@
+---
+- name: Set up EC2 instances
+  hosts: ec2
+  gather_facts: no
+  vars_prompt:
+    - name: keypair
+      prompt: "What keypair to use?"
+      private: no
+  tasks:
+    - name: Create an instance
+      ec2_instance:
+        region: "{{ aws_region }}"
+        name: "{{ inventory_hostname.split('.')[-1] }}"
+        vpc_subnet_id: "{{ hostvars[vpc]['subnet_ids'][subnet] }}"
+        image_id: ami-0b85d4ff00de6a225 # FIXME
+        key_name: "{{ keypair }}"
+        instance_type: "{{ flavor | default(omit) }}"
+        security_groups: "{{ security_groups | default(omit) }}"
+        network:
+          assign_public_ip: "{{ public_ip | default(omit) }}"
+          delete_on_termination: yes
+        tags:
+          Managed-By: Ansible
+          Ansible-Hostname: "{{ inventory_hostname }}"
+          Role: "{{ role | default(omit) }}"
+        purge_tags: yes
+      delegate_to: localhost
+
+    - name: Refresh inventory
+      meta: refresh_inventory
+      run_once: yes

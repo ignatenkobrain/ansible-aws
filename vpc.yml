@@ -11,6 +11,7 @@
         tags:
           Managed-By: Ansible
       register: vpc_info
+      delegate_to: localhost
     - name: Cache VPC id
       set_fact: vpc_id={{ vpc_info['vpc']['id'] }} cacheable=yes
 
@@ -21,39 +22,42 @@
         tags:
           Name: "{{ vpc_name }}"
           Managed-By: Ansible
-      async: 60
+      async: 30
       poll: 0
       register: igw_task
+      delegate_to: localhost
 
     - name: Spawn creation of subnets
       ec2_vpc_subnet:
         region: "{{ aws_region }}"
+        vpc_id: "{{ vpc_id }}"
         az: "{{ item.value['az'] }}"
         cidr: "{{ item.value['cidr'] }}"
-        vpc_id: "{{ vpc_id }}"
         wait: no
         tags:
           Name: "{{ item.key }}"
           Managed-By: Ansible
       loop: "{{ subnets | dict2items }}"
-      async: 90
+      async: 30
       poll: 0
       register: subnets_task
+      delegate_to: localhost
 
     - name: Spawn creation of security groups
       ec2_group:
         region: "{{ aws_region }}"
+        vpc_id: "{{ vpc_id }}"
         name: "{{ item.key }}"
         description: "{{ item.value['description'] }}"
         rules: "{{ item.value['rules'] | default(omit) }}"
-        vpc_id: "{{ vpc_id }}"
         tags:
           Name: "{{ item.key }}"
           Managed-By: Ansible
       loop: "{{ security_groups | dict2items }}"
-      async: 60
+      async: 30
       poll: 0
       register: security_groups_task
+      delegate_to: localhost
 
     - name: Lookup the main VPC route table (created automatically)
       ec2_vpc_route_table_info:
@@ -62,6 +66,7 @@
           vpc-id: "{{ vpc_id }}"
           association.main: "true"
       register: vpc_route_tables
+      delegate_to: localhost
     - name: Cache Route Table id
       set_fact: route_table_id={{ vpc_route_tables['route_tables'][0]['id'] }} cacheable=yes
 
@@ -70,6 +75,7 @@
         jid: "{{ igw_task.ansible_job_id }}"
       register: igw_info
       until: igw_info.finished
+      delegate_to: localhost
     - name: Cache Internet Gateway id
       set_fact: igw_id={{ igw_info['gateway_id'] }} cacheable=yes
 
@@ -80,6 +86,7 @@
       retries: 10
       register: subnets_info
       until: subnets_info.finished
+      delegate_to: localhost
     - name: Cache Subnet id’s
       set_fact:
         subnet_ids: >
@@ -94,6 +101,7 @@
     - name: Add subnets to the routing table
       ec2_vpc_route_table:
         region: "{{ aws_region }}"
+        vpc_id: "{{ vpc_id }}"
         lookup: id
         route_table_id: "{{ route_table_id }}"
         routes:
@@ -102,11 +110,44 @@
           - dest: 0.0.0.0/0
             gateway_id: "{{ igw_id }}"
         subnets: "{{ subnet_ids.keys() | list }}"
-        vpc_id: "{{ vpc_id }}"
         tags:
           Managed-By: Ansible
+      delegate_to: localhost
 
     - name: Wait until security groups are created
       async_status:
         jid: "{{ item.ansible_job_id }}"
       loop: "{{ security_groups_task.results }}"
+      register: security_groups
+      until: security_groups.finished
+      delegate_to: localhost
+
+- name: Create group for regions containing one VPC
+  hosts: vpc
+  gather_facts: no
+  serial: 1
+  tasks:
+    - name: Group by aws_region
+      group_by: key=single_region_{{ aws_region }}
+      when: groups['single_region_%s' | format(aws_region)] | default([]) | count == 0
+
+- name: Upload ssh keys to AWS regions
+  hosts: single_region_*
+  gather_facts: no
+  tasks:
+    - name: Spawn uploading SSH keys
+      ec2_key:
+        region: "{{ aws_region }}"
+        name: "{{ item.key }}"
+        key_material: "{{ item.value }}"
+      loop: "{{ ssh_keys | dict2items }}"
+      async: 30
+      poll: 0
+      register: ssh_keys_task
+      delegate_to: localhost
+
+    - name: Wait until SSH keys are uploaded
+      async_status:
+        jid: "{{ item.ansible_job_id }}"
+      loop: "{{ ssh_keys_task.results }}"
+      delegate_to: localhost

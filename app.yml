@@ -1,0 +1,10 @@
+- name: Imitate initialization of a cluster
+  hosts: app
+  gather_facts: no
+  tasks:
+    - name: Imitate start of cluster from one node
+      command: hostname
+      run_once: yes
+
+    - name: Imitate start of service on all nodes
+      command: hostname

@@ -1,0 +1,4 @@
+---
+aws_region: "{{ inventory_hostname.split('.')[0] }}"
+vpc_name: "{{ inventory_hostname.split('.')[1] }}"
+vpc: "{{ aws_region }}.{{ vpc_name }}"
