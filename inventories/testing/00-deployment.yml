@@ -6,19 +6,31 @@ all:
         ca-central-1.igors:
           cidr: 10.123.0.0/22
           subnets:
-            a:
+            igors-pub-a:
               az: "{{ aws_region }}a"
-              cidr: 10.123.0.0/23
-            b:
+              cidr: 10.123.0.0/24
+              public: yes
+            igors-priv-a:
+              az: "{{ aws_region }}a"
+              cidr: 10.123.1.0/24
+              natgw_subnet: "igors-pub-a"
+            igors-pub-b:
               az: "{{ aws_region }}b"
-              cidr: 10.123.2.0/23
+              cidr: 10.123.2.0/24
+              public: yes
+            igors-priv-b:
+              az: "{{ aws_region }}b"
+              cidr: 10.123.3.0/24
+              natgw_subnet: "igors-pub-b"
     ec2:
       children:
         bastion:
           hosts:
             ca-central-1.igors.bastion:
-              subnet: a
+              subnet: igors-pub-a
         app:
           hosts:
-            ca-central-1.igors.private[01:02]:
-              subnet: b
+            ca-central-1.igors.private01:
+              subnet: igors-priv-a
+            ca-central-1.igors.private02:
+              subnet: igors-priv-b
