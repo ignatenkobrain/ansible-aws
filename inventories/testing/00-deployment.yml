@@ -36,7 +36,18 @@ all:
               subnet: igors-priv-b
           vars:
             volumes:
-              vdc:
+              sdc:
                 volume_type: gp2
                 volume_size: 10
                 delete_on_termination: yes
+    elb:
+      hosts:
+        ca-central-1.kle.application-elb01:
+          health_check_path: "/health"
+          port: "80"
+          protocol: "HTTP"
+          security_groups:
+            - default
+          targets:
+            - ca-central-1.kle.private01
+            - ca-central-1.kle.private02

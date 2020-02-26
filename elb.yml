@@ -1,0 +1,57 @@
+- name: Add an application load balancer
+  hosts: elb
+  gather_facts: no
+  tasks:
+    - name: Construct target group members
+      set_fact:
+        elb_targets: >
+          {{
+              elb_targets | default([])
+              + [{
+                  'Id': hostvars[item]['instance_id'],
+                  'Port': port | int
+              }]
+          }}
+      with_items: "{{ targets }}"
+
+    - elb_target_group:
+        name: "elb-group1"
+        protocol: "{{ protocol }}"
+        port: "{{ port }}"
+        vpc_id: "{{ hostvars[vpc].vpc_id }}"
+        health_check_path: "{{ health_check_path }}"
+        state: present
+        successful_response_codes: "200"
+        targets: "{{ elb_targets }}"
+      delegate_to: 'localhost'
+
+    - elb_application_lb:
+        name: "{{ hostvars[vpc].vpc_name }}-elb01"
+        subnets: "{{ hostvars[vpc].private_subnet_ids }}"
+        security_groups: "{{ hostvars[vpc].security_group_ids | dict2items | selectattr('key', 'in', security_groups) | map(attribute='value') | list }}"
+        # other option: 'internet-facing'
+        scheme: internal
+        listeners:
+          - Protocol: "{{ protocol }}"
+            Port: "{{ port }}"
+            DefaultActions:
+              - Type: forward
+                TargetGroupName: elb-group1
+      delegate_to: localhost
+      register: load_balancer
+
+    - name: Save load balancer hostname
+      set_fact:
+        elb_hostname: "{{ load_balancer.dns_name }}"
+        cacheable: yes
+
+
+- name: Test connection to the load balancer
+  hosts: bastion
+  gather_facts: no
+  run_once: yes
+  tasks:
+    - name: Get hostname of load balancer target
+      uri:
+        url: "http://{{ hostvars['%s.application-elb01' | format(vpc)].elb_hostname }}/hostname.txt"
+        return_content: yes

@@ -27,21 +27,22 @@
       delegate_to: localhost
       register: instance_info
 
-  - name: Cache Instance ID
-    set_face: instance_id={{ instance_info.instances[0]['instance_id'] }} cacheable=yes
+    - name: Cache Instance ID
+      set_fact: instance_id={{ instance_info.instances[0]['instance_id'] }} cacheable=yes
 
-  - name: Create volumes
-    ec2_vol:
-      region: "{{ aws_region }}"
-      instance: "{{ instance_id }}"
-      device_name: "{{ item.key }}"
-      volume_type: "{{ item.value.volume_type }}"
-      volume_size: "{{ item.value.volume_size }}"
-      delete_on_termination: "{{ item.value.delete_on_termination | default(True) }}"
-      tags:
-        Managed-By: Ansible
-        Name: "{{ instance_name }}-{{ item.key }}"
-    loop: "{{ volumes | default({}) | dict2items }}"
+    - name: Create volumes
+      ec2_vol:
+        region: "{{ aws_region }}"
+        instance: "{{ instance_id }}"
+        device_name: "{{ item.key }}"
+        volume_type: "{{ item.value.volume_type }}"
+        volume_size: "{{ item.value.volume_size }}"
+        delete_on_termination: "{{ item.value.delete_on_termination | default(True) }}"
+        tags:
+          Managed-By: Ansible
+          Name: "{{ instance_name }}-{{ item.key }}"
+      loop: "{{ volumes | default({}) | dict2items }}"
+      delegate_to: localhost
 
     - name: Refresh inventory
       meta: refresh_inventory

@@ -106,8 +106,20 @@
               public_subnet_ids | default([])
               + [ subnet_ids[item.key] ]
           }}
+        cacheable: yes
       loop: "{{ subnets | dict2items }}"
       when: "item.value.public | default(false)"
+
+    - name: Collect private subnet IDs
+      set_fact:
+        private_subnet_ids: >
+          {{
+              private_subnet_ids | default([])
+              + [ subnet_ids[item.key] ]
+          }}
+        cacheable: yes
+      loop: "{{ subnets | dict2items }}"
+      when: "'public' not in item.value"
 
     - name: Add public subnets to the main routing table
       ec2_vpc_route_table:
@@ -132,6 +144,7 @@
         region: "{{ aws_region }}"
         subnet_id: "{{ subnet_ids[item.value.natgw_subnet] }}"
         if_exist_do_not_create: yes  # only one per subnet ID
+        wait: yes
       loop: "{{ subnets | dict2items }}"
       when: "'natgw_subnet' in item.value"
       register: ngw_info
@@ -169,9 +182,21 @@
       async_status:
         jid: "{{ item.ansible_job_id }}"
       loop: "{{ security_groups_task.results }}"
-      register: security_groups
-      until: security_groups.finished
+      register: security_groups_info
+      until: security_groups_info.finished
       delegate_to: localhost
+
+    - name: Cache security group IDs
+      set_fact:
+        security_group_ids: >
+          {{
+              security_group_ids | default({})
+              | combine({ item['group_name']: item['group_id'] })
+          }}
+        cacheable: yes
+      loop: "{{ security_groups_info.results }}"
+
+    - debug: var=security_group_ids
 
 - name: Create group for regions containing one VPC
   hosts: vpc
