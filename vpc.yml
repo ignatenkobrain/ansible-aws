@@ -20,7 +20,7 @@
         region: "{{ aws_region }}"
         vpc_id: "{{ vpc_id }}"
         tags:
-          Name: "{{ vpc_name }}"
+          Name: "{{ vpc_name }}-igw"
           Managed-By: Ansible
       async: 30
       poll: 0
@@ -33,6 +33,7 @@
         vpc_id: "{{ vpc_id }}"
         az: "{{ item.value['az'] }}"
         cidr: "{{ item.value['cidr'] }}"
+        map_public: "{{ item.value.public | default(false) }}"
         wait: no
         tags:
           Name: "{{ item.key }}"
@@ -98,7 +99,17 @@
         cacheable: yes
       loop: "{{ subnets_info.results }}"
 
-    - name: Add subnets to the routing table
+    - name: Collect public subnet IDs
+      set_fact:
+        public_subnet_ids: >
+          {{
+              public_subnet_ids | default([])
+              + [ subnet_ids[item.key] ]
+          }}
+      loop: "{{ subnets | dict2items }}"
+      when: "item.value.public | default(false)"
+
+    - name: Add public subnets to the main routing table
       ec2_vpc_route_table:
         region: "{{ aws_region }}"
         vpc_id: "{{ vpc_id }}"
@@ -109,10 +120,50 @@
             gateway_id: local
           - dest: 0.0.0.0/0
             gateway_id: "{{ igw_id }}"
-        subnets: "{{ subnet_ids.keys() | list }}"
+        subnets: "{{ public_subnet_ids }}"
         tags:
+          Name: "{{ vpc_name }}-rt-global"
           Managed-By: Ansible
       delegate_to: localhost
+
+      # NAT gateway for a private subnet must be located in a public subnet
+    - name: Spawn creation of NAT gateways for private subnets
+      ec2_vpc_nat_gateway:
+        region: "{{ aws_region }}"
+        subnet_id: "{{ subnet_ids[item.value.natgw_subnet] }}"
+        if_exist_do_not_create: yes  # only one per subnet ID
+      loop: "{{ subnets | dict2items }}"
+      when: "'natgw_subnet' in item.value"
+      register: ngw_info
+      delegate_to: localhost
+    - name: Cache NAT Gateway id's
+      set_fact:
+        ngw_ids: >
+          {{
+              ngw_ids
+              | default({})
+              | combine({ item.item.key: item.nat_gateway_id })
+          }}
+        cacheable: yes
+      loop: "{{ ngw_info.results }}"
+      when: "item is not skipped"
+
+    - name: Spawn routing tables for private subnets
+      ec2_vpc_route_table:
+        region: "{{ aws_region }}"
+        vpc_id: "{{ vpc_id }}"
+        routes:
+          - dest: "{{ cidr }}"
+            gateway_id: local
+          - dest: 0.0.0.0/0
+            gateway_id: "{{ ngw_ids[item.key] }}"
+        subnets: "{{ subnet_ids[item.key] }}"
+        tags:
+          Name: "{{ vpc_name }}-rt-{{ item.key }}"
+          Managed-By: Ansible
+      delegate_to: localhost
+      loop: "{{ subnets | dict2items }}"
+      when: "'public' not in item.value"
 
     - name: Wait until security groups are created
       async_status:
