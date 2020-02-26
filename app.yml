@@ -11,5 +11,26 @@
       run_once: yes
 
     - name: Start and enable nginx
-      service: name=nginx state=started enable=yes
+      service: name=nginx state=started enabled=yes
       become: yes
+
+    - name: Serve health check file via nginx
+      file:
+        path: /usr/share/nginx/html/health
+        state: touch
+      become: yes
+
+    - name: Serve hostname via nginx
+      copy:
+        content: "{{ ansible_host }}"
+        dest: /usr/share/nginx/html/hostname.txt
+      become: yes
+
+    - name: Test health check
+      uri:
+        url: http://localhost/health
+
+    - name: Test hostname response
+      uri:
+        url: http://localhost/hostname.txt
+        return_content: yes

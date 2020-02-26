@@ -28,7 +28,7 @@
       register: instance_info
 
     - name: Cache Instance ID
-      set_face: instance_id={{ instance_info.instances[0]['instance_id'] }} cacheable=yes
+      set_fact: instance_id={{ instance_info.instances[0]['instance_id'] }} cacheable=yes
 
     - name: Create volumes
       ec2_vol:
@@ -42,7 +42,11 @@
           Managed-By: Ansible
           Name: "{{ instance_name }}-{{ item.key }}"
       loop: "{{ volumes | default({}) | dict2items }}"
+<<<<<<< HEAD
       delegate_to: loclahost
+=======
+      delegate_to: localhost
+>>>>>>> b5f4221... Add application load balancer PoC
 
     - name: Refresh inventory
       meta: refresh_inventory
