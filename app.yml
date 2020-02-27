@@ -2,9 +2,12 @@
   hosts: app
   gather_facts: no
   tasks:
+    - name: Install nginx
+      package: name=nginx state=installed
+
     - name: Imitate start of cluster from one node
       command: hostname
       run_once: yes
 
-    - name: Imitate start of service on all nodes
-      command: hostname
+    - name: Start and enable nginx
+      service: name=nginx state=started enable=yes
