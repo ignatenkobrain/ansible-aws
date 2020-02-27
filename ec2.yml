@@ -27,6 +27,10 @@
       delegate_to: localhost
       register: instance_info
 
+    - name: Refresh inventory
+      meta: refresh_inventory
+      run_once: yes
+
     - name: Cache Instance ID
       set_fact: instance_id={{ instance_info.instances[0]['instance_id'] }} cacheable=yes
 
@@ -42,12 +46,4 @@
           Managed-By: Ansible
           Name: "{{ instance_name }}-{{ item.key }}"
       loop: "{{ volumes | default({}) | dict2items }}"
-<<<<<<< HEAD
-      delegate_to: loclahost
-=======
       delegate_to: localhost
->>>>>>> b5f4221... Add application load balancer PoC
-
-    - name: Refresh inventory
-      meta: refresh_inventory
-      run_once: yes
