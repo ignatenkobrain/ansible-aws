@@ -34,3 +34,10 @@ all:
               subnet: igors-priv-a
             ca-central-1.igors.private02:
               subnet: igors-priv-b
+          vars:
+            volumes:
+              - virtual_name: "{{ instance_name }}"
+                ebs:
+                  volume_type: gp2
+                  volume_size: 10
+                  delete_on_termination: yes
