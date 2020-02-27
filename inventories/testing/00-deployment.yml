@@ -36,10 +36,12 @@ all:
               subnet: igors-priv-b
           vars:
             volumes:
-              sdc:
+              /dev/sdc:
                 volume_type: gp2
                 volume_size: 10
                 delete_on_termination: yes
+                mount: /mnt/ebs
+                filesystem: ext4
     elb:
       hosts:
         ca-central-1.kle.application-elb01:

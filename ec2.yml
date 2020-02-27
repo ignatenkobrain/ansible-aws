@@ -47,3 +47,16 @@
           Name: "{{ instance_name }}-{{ item.key }}"
       loop: "{{ volumes | default({}) | dict2items }}"
       delegate_to: localhost
+
+    - name: Format filesystems
+      filesystem:
+        dev: "{{ item.key }}"
+        fstype: "{{ item.value.filesystem }}"
+        resizefs: yes
+      loop: "{{ volumes | default({}) | dict2items }}"
+
+    - name: Mount filesystems
+      mount:
+        path: "{{ item.value.mount }}"
+        src: "{{ item.key }}"
+      loop: "{{ volumes | default({}) | dict2items }}"
