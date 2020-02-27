@@ -4,6 +4,7 @@
   tasks:
     - name: Install nginx
       package: name=nginx state=installed
+      become: yes
 
     - name: Imitate start of cluster from one node
       command: hostname
@@ -11,3 +12,4 @@
 
     - name: Start and enable nginx
       service: name=nginx state=started enable=yes
+      become: yes
