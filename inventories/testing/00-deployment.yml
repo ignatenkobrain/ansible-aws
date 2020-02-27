@@ -36,8 +36,7 @@ all:
               subnet: igors-priv-b
           vars:
             volumes:
-              - device_name: /dev/vdc
-                ebs:
-                  volume_type: gp2
-                  volume_size: 10
-                  delete_on_termination: yes
+              sdc:
+                volume_type: gp2
+                volume_size: 10
+                delete_on_termination: yes
